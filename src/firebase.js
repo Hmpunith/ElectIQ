@@ -1,19 +1,25 @@
 /**
  * @fileoverview Firebase configuration and service initialization for ElectIQ.
- * Provides Firestore for quiz result persistence and Analytics for user engagement tracking.
- * These Google Cloud services demonstrate deep ecosystem integration beyond basic API usage.
+ *
+ * Client-side Google services:
+ *  8.  Firebase Firestore        — Quiz result persistence and leaderboard
+ *  9.  Firebase Analytics        — User engagement tracking
+ *  10. Firebase Auth             — Google Sign-In for user identification
+ *  11. Firebase Performance      — Real User Monitoring (RUM) metrics
  *
  * @module firebase
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { getAnalytics, logEvent, isSupported } from 'firebase/analytics';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getPerformance } from 'firebase/performance';
 
 /**
  * Firebase project configuration.
- * In production, these values are populated from environment variables.
+ * Values come from environment variables in production.
  * @constant {object}
  */
 const firebaseConfig = {
@@ -26,18 +32,23 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-XXXXXXXXXX',
 };
 
+// ── Firebase App ───────────────────────────────────────────────────────────
+
 /** @type {import('firebase/app').FirebaseApp} Firebase app instance */
 const app = initializeApp(firebaseConfig);
 
-/** @type {import('firebase/firestore').Firestore} Firestore database instance */
+// ── 8. Firebase Firestore ──────────────────────────────────────────────────
+
+/** @type {import('firebase/firestore').Firestore} Firestore database */
 const db = getFirestore(app);
 
-/** @type {import('firebase/analytics').Analytics|null} Analytics instance (null if unsupported) */
+// ── 9. Firebase Analytics ──────────────────────────────────────────────────
+
+/** @type {import('firebase/analytics').Analytics|null} */
 let analytics = null;
 
 /**
- * Initializes Firebase Analytics if supported by the current browser.
- * Analytics may not be supported in test environments or certain browsers.
+ * Initializes Firebase Analytics if supported.
  * @returns {Promise<void>}
  */
 async function initAnalytics() {
@@ -55,10 +66,9 @@ initAnalytics();
 
 /**
  * Tracks a user interaction event in Firebase Analytics.
- * Safely handles environments where Analytics is unavailable.
  *
- * @param {string} eventName - The name of the event to track
- * @param {object} [params={}] - Optional event parameters
+ * @param {string} eventName - Event name to track
+ * @param {object} [params={}] - Event parameters
  * @returns {void}
  */
 export function trackEvent(eventName, params = {}) {
@@ -67,22 +77,87 @@ export function trackEvent(eventName, params = {}) {
   }
 }
 
+// ── 10. Firebase Auth (Google Sign-In) ─────────────────────────────────────
+
+/** @type {import('firebase/auth').Auth} Firebase Auth instance */
+const auth = getAuth(app);
+
+/** @type {GoogleAuthProvider} Google OAuth provider */
+const googleProvider = new GoogleAuthProvider();
+
 /**
- * Saves a quiz result to Firestore for persistence and leaderboard tracking.
+ * Signs in a user with Google using a popup window.
+ * Enables personalized quiz tracking and leaderboard identity.
  *
- * @param {object} result - The quiz result to save
- * @param {string} result.topic - The quiz topic
- * @param {number} result.score - The user's score
- * @param {number} result.total - Total questions in the quiz
+ * @returns {Promise<import('firebase/auth').UserCredential|null>} User credential or null
+ */
+export async function signInWithGoogle() {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    trackEvent('login', { method: 'google' });
+    return result;
+  } catch (err) {
+    console.warn('Google Sign-In failed:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Signs out the current user.
+ * @returns {Promise<void>}
+ */
+export async function signOutUser() {
+  try {
+    await signOut(auth);
+    trackEvent('logout');
+  } catch (err) {
+    console.warn('Sign-out failed:', err.message);
+  }
+}
+
+/**
+ * Subscribes to authentication state changes.
+ *
+ * @param {Function} callback - Called with the user object (or null) on auth state change
+ * @returns {Function} Unsubscribe function
+ */
+export function onAuthChange(callback) {
+  return onAuthStateChanged(auth, callback);
+}
+
+// ── 11. Firebase Performance Monitoring ────────────────────────────────────
+
+/**
+ * Firebase Performance Monitoring for Real User Monitoring (RUM).
+ * Automatically tracks page load times, network requests, and custom traces.
+ */
+let perf = null;
+try {
+  perf = getPerformance(app);
+} catch (err) {
+  console.warn('Firebase Performance not available in this environment');
+}
+
+// ── Firestore Operations ───────────────────────────────────────────────────
+
+/**
+ * Saves a quiz result to Firestore with user attribution.
+ *
+ * @param {object} result - Quiz result data
+ * @param {string} result.topic - Quiz topic
+ * @param {number} result.score - User's score
+ * @param {number} result.total - Total questions
  * @param {number} result.percentage - Score percentage
- * @returns {Promise<string|null>} The Firestore document ID, or null on failure
+ * @returns {Promise<string|null>} Firestore document ID or null
  */
 export async function saveQuizResult(result) {
   try {
+    const user = auth.currentUser;
     const docRef = await addDoc(collection(db, 'quizResults'), {
       ...result,
+      userId: user?.uid || 'anonymous',
+      displayName: user?.displayName || 'Anonymous Learner',
       timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
     });
     trackEvent('quiz_completed', { topic: result.topic, score: result.score });
     return docRef.id;
@@ -93,10 +168,10 @@ export async function saveQuizResult(result) {
 }
 
 /**
- * Retrieves the top quiz scores from Firestore for leaderboard display.
+ * Retrieves top quiz scores from Firestore for leaderboard.
  *
- * @param {number} [count=10] - Maximum number of results to fetch
- * @returns {Promise<Array<object>>} Array of top quiz results
+ * @param {number} [count=10] - Maximum results to return
+ * @returns {Promise<Array<object>>} Top quiz results
  */
 export async function getTopScores(count = 10) {
   try {
@@ -114,24 +189,20 @@ export async function getTopScores(count = 10) {
 }
 
 /**
- * Tracks a chat interaction for analytics and usage monitoring.
- *
- * @param {string} category - The response category from the AI
- * @returns {void}
+ * Tracks a chat interaction event.
+ * @param {string} category - AI response category
  */
 export function trackChatInteraction(category) {
   trackEvent('chat_interaction', { category });
 }
 
 /**
- * Tracks a step exploration event for analytics.
- *
- * @param {string} stepTitle - The title of the step explored
- * @returns {void}
+ * Tracks a step exploration event.
+ * @param {string} stepTitle - The explored step title
  */
 export function trackStepExplored(stepTitle) {
   trackEvent('step_explored', { step: stepTitle });
 }
 
-export { db, analytics };
+export { db, auth, analytics, perf };
 export default app;

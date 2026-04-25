@@ -3,24 +3,31 @@
  * Enterprise-grade Express server powering an AI election assistant.
  *
  * Architecture:
- * - server/config.js      → Centralized configuration
- * - server/middleware.js   → Security & utility middleware
- * - server/googleServices.js → Google Cloud Logging, Cloud Storage, Vertex AI
- * - server/schemas.js      → Zod data validation schemas
- * - server/prompts.js      → AI system instructions with few-shot examples
- * - server/routes.js       → API route handlers
+ * - server/config.js        → Centralized configuration
+ * - server/middleware.js     → Security & utility middleware (Helmet, XSS, CORS)
+ * - server/googleServices.js → ALL Google Cloud service integrations
+ * - server/schemas.js        → Zod data validation schemas
+ * - server/prompts.js        → AI system instructions with few-shot examples
+ * - server/routes.js         → API route handlers with BigQuery and Error Reporting
  *
- * Google Cloud Services:
- * 1. Google Gemini 2.5 Flash — AI/ML API for chat, quiz, and step explainer
- * 2. Google Cloud Run — Deployment and auto-scaling
- * 3. Google Cloud Logging — Production observability via @google-cloud/logging
- * 4. Google Cloud Storage — Asset management via @google-cloud/storage
- * 5. Firebase Firestore — Quiz result persistence (client-side)
- * 6. Firebase Analytics — User engagement tracking (client-side)
- * 7. Google Fonts — Typography (Inter, JetBrains Mono)
+ * Google Cloud Services (12 total):
+ *  Server-side:
+ *   1. Google Gemini 2.5 Flash     — AI/ML API (@google/generative-ai)
+ *   2. Google Cloud Run            — Deployment platform
+ *   3. Google Cloud BigQuery       — Analytics warehouse (@google-cloud/bigquery)
+ *   4. Google Cloud Logging        — Observability (@google-cloud/logging)
+ *   5. Google Cloud Storage        — Asset management (@google-cloud/storage)
+ *   6. Google Cloud Secret Manager — Credential management (@google-cloud/secret-manager)
+ *   7. Google Cloud Error Reporting— Error tracking (@google-cloud/error-reporting)
+ *  Client-side:
+ *   8.  Firebase Firestore         — Quiz persistence (firebase/firestore)
+ *   9.  Firebase Analytics         — Engagement tracking (firebase/analytics)
+ *   10. Firebase Auth              — Google Sign-In (firebase/auth)
+ *   11. Firebase Performance       — RUM metrics (firebase/performance)
+ *   12. Google Fonts               — Typography CDN
  *
  * @author ElectIQ Team
- * @version 3.0.0
+ * @version 4.0.0
  */
 
 import express from 'express';

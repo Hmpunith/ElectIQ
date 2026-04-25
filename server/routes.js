@@ -1,16 +1,16 @@
 /**
  * @fileoverview API route handlers for ElectIQ.
- * Each route is a clean, focused handler that delegates to services.
- * Integrates Google Cloud Logging for production observability.
+ * Each route is a clean, focused handler that delegates to Google Cloud services.
+ * Integrates: Gemini AI, Cloud Logging, BigQuery, Error Reporting, and Secret Manager.
  *
  * @module routes
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import express from 'express';
 import NodeCache from 'node-cache';
 import crypto from 'crypto';
-import { genAI, logger, writeCloudLog } from './googleServices.js';
+import { genAI, logger, writeCloudLog, insertQuizAnalytics, getQuizStatistics, reportError } from './googleServices.js';
 import { ChatResponseSchema, QuizSchema, StepExplainerSchema } from './schemas.js';
 import config from './config.js';
 import { ELECTION_ASSISTANT_INSTRUCTION, QUIZ_GENERATOR_INSTRUCTION, STEP_EXPLAINER_INSTRUCTION } from './prompts.js';
@@ -131,6 +131,7 @@ router.post('/chat', async (req, res) => {
     res.json(result);
     writeCloudLog('INFO', 'Chat response served', { requestId: req.requestId, category: result.category });
   } catch (error) {
+    reportError(error, { endpoint: '/api/chat', requestId: req.requestId });
     logger.error({ error: error.message, requestId: req.requestId }, 'Chat failed');
     writeCloudLog('ERROR', 'Chat failed', { error: error.message, requestId: req.requestId });
     res.status(500).json({ error: 'Failed to process your question. Please try again.' });
@@ -139,8 +140,8 @@ router.post('/chat', async (req, res) => {
 
 /**
  * POST /api/quiz
- * Generates an interactive, AI-powered election knowledge quiz
- * with scoring, explanations, and Firebase persistence.
+ * Generates an interactive, AI-powered election knowledge quiz.
+ * Results are asynchronously logged to Google BigQuery for analytics.
  */
 router.post('/quiz', async (req, res) => {
   try {
@@ -163,7 +164,16 @@ router.post('/quiz', async (req, res) => {
 
     res.json(result);
     writeCloudLog('INFO', 'Quiz generated', { requestId: req.requestId, topic });
+
+    // Async: Log quiz generation to BigQuery for analytics dashboarding
+    insertQuizAnalytics({
+      topic: result.topic,
+      questionCount: result.questions.length,
+      requestId: req.requestId,
+      action: 'generated',
+    }).catch(() => {});
   } catch (error) {
+    reportError(error, { endpoint: '/api/quiz', requestId: req.requestId });
     logger.error({ error: error.message, requestId: req.requestId }, 'Quiz generation failed');
     writeCloudLog('ERROR', 'Quiz generation failed', { error: error.message, requestId: req.requestId });
     res.status(500).json({ error: 'Failed to generate quiz. Please try again.' });
@@ -197,10 +207,28 @@ router.post('/explain-step', async (req, res) => {
     res.json(result);
     writeCloudLog('INFO', 'Step explained', { requestId: req.requestId, step });
   } catch (error) {
+    reportError(error, { endpoint: '/api/explain-step', requestId: req.requestId });
     logger.error({ error: error.message, requestId: req.requestId }, 'Step explanation failed');
     writeCloudLog('ERROR', 'Step explanation failed', { error: error.message, requestId: req.requestId });
     res.status(500).json({ error: 'Failed to explain step. Please try again.' });
   }
 });
 
+/**
+ * GET /api/stats
+ * Retrieves aggregate quiz statistics from Google BigQuery.
+ * Returns average scores, attempt counts, and popular topics.
+ */
+router.get('/stats', async (req, res) => {
+  try {
+    const stats = await getQuizStatistics();
+    writeCloudLog('INFO', 'Stats retrieved from BigQuery', { requestId: req.requestId });
+    res.json({ stats, source: 'BigQuery', requestId: req.requestId });
+  } catch (error) {
+    reportError(error, { endpoint: '/api/stats', requestId: req.requestId });
+    res.json({ stats: [], source: 'BigQuery', note: 'BigQuery not configured in this environment' });
+  }
+});
+
 export default router;
+

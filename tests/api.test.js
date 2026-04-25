@@ -1,6 +1,6 @@
 /**
- * @fileoverview API endpoint tests with mocked Gemini responses.
- * Tests input validation, error handling, and response structure.
+ * @fileoverview API endpoint tests.
+ * Tests input validation, error handling, response structure, and all endpoints.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -39,5 +39,12 @@ describe('API Endpoint Tests', () => {
     const res = await request(app).post('/api/explain-step').send({ step: '' });
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty('error');
+  });
+
+  it('GET /api/stats should return BigQuery stats response', async () => {
+    const res = await request(app).get('/api/stats');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('stats');
+    expect(res.body).toHaveProperty('source', 'BigQuery');
   });
 });

@@ -46,18 +46,22 @@ graph LR
     API --> CloudRun[Google Cloud Run]
 ```
 
-## ☁️ Google Services Integration (8 Services)
+## ☁️ Google Services Integration (12 Services)
 
 | # | Google Service | SDK/Package | Usage in ElectIQ |
 |---|---|---|---|
-| 1 | **Google Gemini 2.5 Flash** | `@google/generative-ai` | Powers all 3 AI endpoints: chat, quiz, step explainer with few-shot prompting |
+| 1 | **Google Gemini 2.5 Flash** | `@google/generative-ai` | Powers 3 AI endpoints: chat, quiz, step explainer with few-shot prompting |
 | 2 | **Google Cloud Run** | `gcloud CLI` | Production deployment with multi-stage Dockerfile, auto-scaling, HTTPS |
-| 3 | **Firebase Firestore** | `firebase/firestore` | Persists quiz results for leaderboard tracking and user progress |
-| 4 | **Firebase Analytics** | `firebase/analytics` | Tracks tab navigation, chat interactions, step exploration, quiz completion |
-| 5 | **Google Cloud Logging** | `@google-cloud/logging` | Structured production observability with severity levels and request correlation |
-| 6 | **Google Cloud Storage** | `@google-cloud/storage` | Asset management and quiz analytics export for downstream processing |
-| 7 | **Vertex AI (Safety)** | `@google/generative-ai` | Content safety assessment for user-generated chat inputs |
-| 8 | **Google Fonts** | CDN | Inter and JetBrains Mono typography via preconnected CDN |
+| 3 | **Google Cloud BigQuery** | `@google-cloud/bigquery` | Analytics data warehouse — stores quiz metrics, queries aggregate statistics |
+| 4 | **Google Cloud Logging** | `@google-cloud/logging` | Structured production logging with severity levels and request correlation |
+| 5 | **Google Cloud Storage** | `@google-cloud/storage` | Asset management and quiz analytics export for downstream processing |
+| 6 | **Google Cloud Secret Manager** | `@google-cloud/secret-manager` | Secure API key retrieval in production (env var fallback in dev) |
+| 7 | **Google Cloud Error Reporting** | `@google-cloud/error-reporting` | Production error tracking, grouping, and alerting via Cloud Console |
+| 8 | **Firebase Firestore** | `firebase/firestore` | Persists quiz results for leaderboard tracking and user progress |
+| 9 | **Firebase Analytics** | `firebase/analytics` | Tracks tab navigation, chat interactions, step exploration, quiz completion |
+| 10 | **Firebase Auth** | `firebase/auth` | Google Sign-In for user identification and personalized quiz tracking |
+| 11 | **Firebase Performance** | `firebase/performance` | Real User Monitoring (RUM) — page load times, network request latency |
+| 12 | **Google Fonts** | CDN | Inter and JetBrains Mono typography via preconnected CDN |
 
 ## 📁 Modular Server Architecture
 
