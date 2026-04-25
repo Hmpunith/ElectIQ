@@ -324,7 +324,8 @@ async function callGemini(systemInstruction, userPrompt, schema, cachePrefix) {
 
 /** Health check endpoint for Cloud Run load balancer */
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'healthy', service: 'electiq', timestamp: new Date().toISOString() });
+  writeCloudLog('INFO', 'Health check', { requestId: req.requestId });
+  res.json({ status: 'healthy', service: 'electiq', timestamp: new Date().toISOString(), requestId: req.requestId });
 });
 
 /**
@@ -351,8 +352,10 @@ app.post('/api/chat', async (req, res) => {
     );
 
     res.json(result);
+    writeCloudLog('INFO', 'Chat response served', { requestId: req.requestId, category: result.category });
   } catch (error) {
-    logger.error({ error: error.message }, 'Chat failed');
+    logger.error({ error: error.message, requestId: req.requestId }, 'Chat failed');
+    writeCloudLog('ERROR', 'Chat failed', { error: error.message, requestId: req.requestId });
     res.status(500).json({ error: 'Failed to process your question. Please try again.' });
   }
 });
@@ -381,8 +384,10 @@ app.post('/api/quiz', async (req, res) => {
     );
 
     res.json(result);
+    writeCloudLog('INFO', 'Quiz generated', { requestId: req.requestId, topic });
   } catch (error) {
-    logger.error({ error: error.message }, 'Quiz generation failed');
+    logger.error({ error: error.message, requestId: req.requestId }, 'Quiz generation failed');
+    writeCloudLog('ERROR', 'Quiz generation failed', { error: error.message, requestId: req.requestId });
     res.status(500).json({ error: 'Failed to generate quiz. Please try again.' });
   }
 });
@@ -411,8 +416,10 @@ app.post('/api/explain-step', async (req, res) => {
     );
 
     res.json(result);
+    writeCloudLog('INFO', 'Step explained', { requestId: req.requestId, step });
   } catch (error) {
-    logger.error({ error: error.message }, 'Step explanation failed');
+    logger.error({ error: error.message, requestId: req.requestId }, 'Step explanation failed');
+    writeCloudLog('ERROR', 'Step explanation failed', { error: error.message, requestId: req.requestId });
     res.status(500).json({ error: 'Failed to explain step. Please try again.' });
   }
 });
