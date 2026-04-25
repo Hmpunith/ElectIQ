@@ -1,0 +1,24 @@
+🚀 **Just submitted my entry for Google PromptWars April 2026!** 🚀
+
+When the new secret challenge dropped—asking us to "Create an assistant that helps users understand the election process, timelines, and steps in an interactive and easy-to-follow way"—I knew exactly what to build. 
+
+Introducing **ElectIQ**: A fully interactive, AI-powered civic education platform designed to make democracy accessible to everyone. 🗳️
+
+**The ElectIQ Experience:**
+Instead of reading through dense government PDFs, citizens can now explore the election journey through a dynamic interface powered by **Google Gemini 2.5 Flash**:
+📋 **Step-by-Step Guide:** An easy-to-follow wizard that breaks down complex procedures into clear, actionable steps.
+📅 **Interactive Timeline:** A visual, animated journey from election announcement all the way to government formation.
+💬 **AI Election Assistant:** A conversational chatbot ready to answer questions like "How do I register?" or "What happens on voting day?"
+🧠 **Gamified Learning:** Interactive AI-generated quizzes to test your knowledge and reinforce understanding.
+
+**Engineering Highlights:**
+Built with a focus on reliability and accessibility, ElectIQ is deployed on **Google Cloud Run** with an Enterprise Secure Proxy pattern. It features strict JSON validation via Zod to prevent AI hallucinations, caching for blazing-fast responses, and is fully WCAG AA Accessible to ensure no voter is left behind.
+
+A massive thank you to Google for Developers for a challenge that perfectly blends cutting-edge AI with crucial real-world impact. 
+
+Check out the live project and the source code below! 👇
+
+🔗 [Link to GitHub Repository]
+🔗 [Link to Live Cloud Run Preview]
+
+#GooglePromptWars #PromptWars2026 #GoogleCloud #GeminiAI #CivicTech #SoftwareEngineering #AI

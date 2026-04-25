@@ -387,3 +387,29 @@ body {
   .tabs { flex-wrap: nowrap; }
   .tab { font-size: 0.75rem; padding: 0.6rem 0.5rem; }
 }
+
+/* ── Focus Visible (Accessibility) ───────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--accent-indigo);
+  outline-offset: 2px;
+}
+
+/* ── High Contrast Mode ──────────────────────────────────────────────────── */
+@media (prefers-contrast: high) {
+  :root {
+    --bg-primary: #000000;
+    --bg-card: rgba(0, 0, 0, 0.95);
+    --text-primary: #ffffff;
+    --text-secondary: #e0e0e0;
+    --border: rgba(255, 255, 255, 0.5);
+  }
+  .card { border-width: 2px; }
+  .step__number { border-width: 3px; }
+}
+
+/* ── Print Styles ────────────────────────────────────────────────────────── */
+@media print {
+  body { background: white; color: black; }
+  .header__status, .chat__form, .quiz-btn, .skip-link { display: none; }
+  .card { box-shadow: none; border: 1px solid #ccc; }
+}

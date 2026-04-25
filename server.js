@@ -2,9 +2,10 @@
  * @fileoverview ElectIQ Backend Server
  * Enterprise-grade Express server powering an AI election assistant
  * using Google Gemini 2.5 Flash for interactive civic education.
+ * Integrates Google Cloud Logging for production observability.
  *
  * @author ElectIQ Team
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import express from 'express';
@@ -20,6 +21,7 @@ import crypto from 'crypto';
 import pino from 'pino';
 import compression from 'compression';
 import { z } from 'zod';
+import { Logging } from '@google-cloud/logging';
 
 dotenv.config();
 
@@ -36,6 +38,34 @@ const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
   transport: process.env.NODE_ENV !== 'production' ? { target: 'pino-pretty' } : undefined,
 });
+
+/**
+ * @type {Logging} Google Cloud Logging client for production-grade observability.
+ * Integrates with Cloud Run's native logging infrastructure for centralized log management.
+ */
+const cloudLogging = new Logging();
+const cloudLog = cloudLogging.log('electiq-server');
+
+/**
+ * Writes a structured log entry to Google Cloud Logging.
+ * Falls back silently in non-GCP environments (local development).
+ *
+ * @param {string} severity - Log severity (INFO, WARNING, ERROR)
+ * @param {string} message - Log message
+ * @param {object} [data={}] - Additional structured data
+ * @returns {Promise<void>}
+ */
+async function writeCloudLog(severity, message, data = {}) {
+  try {
+    const entry = cloudLog.entry(
+      { severity, resource: { type: 'cloud_run_revision' } },
+      { message, ...data, timestamp: new Date().toISOString() }
+    );
+    await cloudLog.write(entry);
+  } catch (_err) {
+    // Silently ignore in non-GCP environments
+  }
+}
 
 /** @type {NodeCache} In-memory cache with 10-minute TTL for AI response deduplication */
 const responseCache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
@@ -79,14 +109,30 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:"],
+      scriptSrc: ["'self'", "https://apis.google.com", "https://www.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https://www.gstatic.com"],
+      connectSrc: ["'self'", "https://firestore.googleapis.com", "https://firebase.googleapis.com", "https://www.googleapis.com", "https://identitytoolkit.googleapis.com"],
+      frameSrc: ["https://accounts.google.com"],
     },
   },
 }));
 app.use(compression());
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(express.json({ limit: '500kb' }));
+
+/**
+ * Request ID middleware — Attaches a unique identifier to every request
+ * for distributed tracing and security audit trails.
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {Function} next
+ */
+app.use((req, res, next) => {
+  req.requestId = crypto.randomUUID();
+  res.setHeader('X-Request-Id', req.requestId);
+  next();
+});
 
 /** Rate limiter: 20 requests per minute per IP */
 const apiLimiter = rateLimit({
